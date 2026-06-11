@@ -84,8 +84,8 @@ namespace ContosoShopEasy.Security
             if (string.IsNullOrEmpty(cardNumber))
                 return false;
 
-            // Security vulnerability: Log full credit card number
-            Console.WriteLine($"[DEBUG] Validating credit card: {cardNumber}");
+            string maskedCard = GetMaskedCardNumber(cardNumber);
+            Console.WriteLine($"[DEBUG] Validating credit card ending in {maskedCard}");
 
             // Remove spaces and dashes
             cardNumber = cardNumber.Replace(" ", "").Replace("-", "");
@@ -99,6 +99,19 @@ namespace ContosoShopEasy.Security
 
             Console.WriteLine("[WARNING] Invalid credit card format");
             return false;
+        }
+
+        private static string GetMaskedCardNumber(string cardNumber)
+        {
+            if (string.IsNullOrEmpty(cardNumber))
+                return string.Empty;
+
+            string digits = cardNumber.Replace(" ", "").Replace("-", "");
+            if (digits.Length <= 4)
+                return digits;
+
+            string lastFour = digits[^4..];
+            return new string('*', digits.Length - 4) + lastFour;
         }
 
         // Security vulnerability: Predictable token generation (simplified)
@@ -168,9 +181,9 @@ namespace ContosoShopEasy.Security
             
             Console.WriteLine("Input validation: ENABLED (but vulnerable)");
             Console.WriteLine("Password encryption: MD5 (WEAK)");
-            Console.WriteLine("Credit card storage: FULL NUMBERS (INSECURE)");
+            Console.WriteLine("Credit card storage: SECURE (last 4 digits only)");
             Console.WriteLine("Logging level: DEBUG (EXPOSES SENSITIVE DATA)");
-            Console.WriteLine("SQL injection protection: DISABLED");
+            Console.WriteLine("SQL injection protection: ENABLED");
             Console.WriteLine("XSS protection: MINIMAL");
             
             Console.WriteLine("=== End Vulnerability List ===");

@@ -17,59 +17,49 @@ namespace ContosoShopEasy.Services
             _orderRepository = orderRepository;
         }
 
-        // Vulnerable payment processing method
         public bool ProcessPayment(string cardNumber, string cardHolderName, string expiryDate, string cvv, decimal amount)
         {
-            // Security vulnerability: Log sensitive payment information
-            Console.WriteLine($"[DEBUG] Processing payment for card: {cardNumber}");
-            Console.WriteLine($"[DEBUG] Card holder: {cardHolderName}");
-            Console.WriteLine($"[DEBUG] Expiry: {expiryDate}, CVV: {cvv}");
-            Console.WriteLine($"[DEBUG] Amount: ${amount}");
-            
-            // Security vulnerability: Log configuration details
-            Console.WriteLine($"[DEBUG] Using payment gateway: {PAYMENT_GATEWAY_URL}");
-            Console.WriteLine($"[DEBUG] Merchant: {MERCHANT_NAME}");
-            Console.WriteLine($"[DEBUG] Gateway version: {GATEWAY_VERSION}");
+            string maskedCard = GetMaskedCardNumber(cardNumber);
 
-            // Simulate payment validation (vulnerable)
+            Console.WriteLine($"[INFO] Processing payment for card ending in {GetCardLastFourDigits(cardNumber)}");
+            Console.WriteLine($"[INFO] Amount: ${amount}");
+            Console.WriteLine($"[INFO] Using payment gateway: {PAYMENT_GATEWAY_URL}");
+            Console.WriteLine($"[INFO] Merchant: {MERCHANT_NAME}");
+            Console.WriteLine($"[INFO] Gateway version: {GATEWAY_VERSION}");
+
             if (!ValidateCardNumber(cardNumber))
             {
-                Console.WriteLine($"[ERROR] Invalid card number: {cardNumber}");
+                Console.WriteLine($"[ERROR] Invalid card number: {maskedCard}");
                 return false;
             }
 
             if (!ValidateExpiryDate(expiryDate))
             {
-                Console.WriteLine($"[ERROR] Invalid or expired date: {expiryDate}");
+                Console.WriteLine($"[ERROR] Invalid or expired date");
                 return false;
             }
 
-            // Simulate payment processing
             Console.WriteLine("[INFO] Connecting to payment gateway...");
-            Thread.Sleep(1000); // Simulate network delay
+            Thread.Sleep(1000);
 
-            // Security vulnerability: Generate predictable transaction IDs
             string transactionId = GenerateTransactionId(cardNumber, amount);
             
-            // Security vulnerability: Store sensitive card data
             var paymentInfo = new PaymentInfo
             {
                 Method = PaymentMethod.CreditCard,
-                CardNumber = cardNumber, // Should never store full card numbers
+                CardLastFourDigits = GetCardLastFourDigits(cardNumber),
+                CardType = GetCardType(cardNumber),
                 CardHolderName = cardHolderName,
                 ExpiryDate = expiryDate,
-                CVV = cvv, // Should never store CVV
                 Amount = amount,
                 ProcessedDate = DateTime.UtcNow,
                 Status = PaymentStatus.Approved,
                 TransactionId = transactionId
             };
 
-            Console.WriteLine($"[SUCCESS] Payment processed successfully!");
+            Console.WriteLine("[SUCCESS] Payment processed successfully!");
             Console.WriteLine($"[DEBUG] Transaction ID: {transactionId}");
-            
-            // Security vulnerability: Log complete payment details
-            Console.WriteLine($"[LOG] Payment completed - Card: {cardNumber}, Amount: ${amount}, Transaction: {transactionId}");
+            Console.WriteLine($"[LOG] Payment completed - Card: {maskedCard}, Amount: ${amount}, Transaction: {transactionId}");
 
             return true;
         }
@@ -117,6 +107,47 @@ namespace ContosoShopEasy.Services
             string amountStr = amount.ToString("F2").Replace(".", "");
             
             return $"TXN_{timestamp}_{lastFour}_{amountStr}";
+        }
+
+        private static string GetCardLastFourDigits(string cardNumber)
+        {
+            if (string.IsNullOrEmpty(cardNumber))
+                return string.Empty;
+
+            string digits = cardNumber.Replace(" ", "").Replace("-", "");
+            return digits.Length >= 4 ? digits[^4..] : digits;
+        }
+
+        private static string GetCardType(string cardNumber)
+        {
+            if (string.IsNullOrEmpty(cardNumber))
+                return "Unknown";
+
+            string digits = cardNumber.Replace(" ", "").Replace("-", "");
+            if (digits.StartsWith("4"))
+                return "Visa";
+            if (digits.StartsWith("5"))
+                return "Mastercard";
+            if (digits.StartsWith("34") || digits.StartsWith("37"))
+                return "American Express";
+            if (digits.StartsWith("6"))
+                return "Discover";
+            if (digits.StartsWith("35"))
+                return "JCB";
+            if (digits.StartsWith("36") || digits.StartsWith("38"))
+                return "Diners Club";
+
+            return "Unknown";
+        }
+
+        private static string GetMaskedCardNumber(string cardNumber)
+        {
+            if (string.IsNullOrEmpty(cardNumber))
+                return string.Empty;
+
+            string digits = cardNumber.Replace(" ", "").Replace("-", "");
+            string lastFour = digits.Length >= 4 ? digits[^4..] : digits;
+            return digits.Length > 4 ? new string('*', digits.Length - 4) + lastFour : lastFour;
         }
 
         public bool RefundPayment(string transactionId, decimal amount)
